@@ -1,0 +1,6 @@
+build/
+debug/
+.cache/
+CMakeFiles/
+
+compile_commands.json
