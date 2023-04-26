@@ -71,7 +71,42 @@ This data is managed by "vertex buffer objects" (VBOs) that can store a large nu
 
 Sending data from the CPU to the GPU is slow so it is better to do it in chunks. Once in the GPU's memory it has almost instant read access to the vertices. 
 
-You can make a VBO using "glGenBuffers" and passing the amount of buffers to generate and a pointer to the variable that holds the id of the buffer (it can generate more than 1 buffer at a time). 
+You can make a VBO using `void glGenBuffers(GLsizei n, GLuint * buffers)` and passing the amount of buffers to generate and a pointer to the variable that holds the id of the buffer (it can generate more than 1 buffer at a time). The function essentially tells the GPU that we are going to be allocating memory and data to this buffer at some point and gives us the Id CPU side so we can reference it. 
+Deleting them is done using "glDeleteBuffers"
 
+The `glBindBuffer(target, buffer)` tells the GPU what the buffer we reference using the buffer parameter will be used for, it gives the GPU "context". This sets up the internal state of the buffer. If we just want to store data in the buffer it doesn't matter which target we specify. 
 
-# Stopped at https://learnopengl.com/Getting-started/Hello-Triangle
+`void glBufferData(enum target, sizeiptr size, const void *data, enum usage)`
+copies user defined data into the buffer (this creates mutable data). `target` is the type of buffer we want to write to (eg. the buffer we assigned using `glBindBuffer`), `size` is the size in bytes of the data, `data` is the pointer to the data we want to write to the buffer, `usage` is tells the GPU how we want to use the data. 
+`usage` has 3 options: 
+
+- GL_STREAM_DRAW - the data is set only once and used only a few times
+- GL_STATIC_DRAW - the data is set only once and used many times
+- GL_DYNAMIC_DRAW - the data is changed a lot and used many times
+
+This tells the GPU how it should handle the memory, different options will allow for slower/ faster read/ write depending on which option we pick. 
+
+# Vertex Shader
+
+This is the first shader that we can write in the pipeline.
+
+This is a very simple sample vertex shader:
+```
+#version 330 core
+layout (location = 0) in vec3 aPos;
+
+void main()
+{
+    gl_Position = vec4(aPos.x, aPos.y, aPos.z, 1.0);
+}
+```
+
+We need to specify the version we are writing in also the mode we are in (compatability or core).
+
+The `in` keyword specifies the input vertex attributes. This example takes the vertex data into a `vec3` called `aPos`. It also needs to specify the location of the input variable via `layout`.
+
+`gl_Position` is a predefined variable which is a `vec4` we assign to this variable to output from the shader. The use of the 4th dimension in this variable will be explained later. 
+
+This shader literally just forwards the data taken from the input and outputs it the same (but with the `vec4` format).
+
+# Continue from https://learnopengl.com/Getting-started/Hello-Triangle

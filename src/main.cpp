@@ -10,10 +10,20 @@ static SDL_GLContext main_context;
 static void sdl_die(const char* message);
 void init_screen(const char* caption);
 
-float vertices[] = {-0.5f, -0.5f, 0.0f, 0.5f, -0.5, 0.0f, 0.0f, 0.5f, 0.0f};
+float vertices[] = { -0.5f, -0.5f, 0.0f, 0.5f, -0.5, 0.0f, 0.0f, 0.5f, 0.0f };
 
 int main() {
 	init_screen("OpenGL Experiment");
+
+	// Create vertex buffer
+	GLuint vertex_buffer;
+	glGenBuffers(1, &vertex_buffer);
+
+	// create buffer context
+	glBindBuffer(GL_ARRAY_BUFFER, vertex_buffer);
+
+	// send data
+	glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 
 	// keep window up
 	SDL_Event e;
@@ -53,8 +63,8 @@ void init_screen(const char* caption) {
 	SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 3);
 
 	if (!(window = SDL_CreateWindow(caption, SDL_WINDOWPOS_CENTERED,
-					SDL_WINDOWPOS_CENTERED, SCREEN_HEIGHT,
-					SCREEN_WIDTH, SDL_WINDOW_OPENGL))) {
+		SDL_WINDOWPOS_CENTERED, SCREEN_HEIGHT,
+		SCREEN_WIDTH, SDL_WINDOW_OPENGL))) {
 		sdl_die("Failed to create window");
 	}
 
@@ -72,12 +82,9 @@ void init_screen(const char* caption) {
 	printf("Version: %s\n", glGetString(GL_VERSION));
 
 	// Sync refresh rate with monitor
-	// SDL_GL_SetSwapInterval(1);
+	SDL_GL_SetSwapInterval(1);
 
 	// disable depth testing and face culling
-	// glDisable(GL_DEPTH_TEST);
-	// glDisable(GL_CULL_FACE);
-
-	int w, h;
-	SDL_GetWindowSize(window, &w, &h);
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_CULL_FACE);
 }
