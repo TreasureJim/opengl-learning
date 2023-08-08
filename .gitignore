@@ -2,5 +2,13 @@ build/
 debug/
 .cache/
 CMakeFiles/
+.cmake/
+.vscode/
 
 compile_commands.json
+
+**/Makefile
+**/CMakeCache.txt
+**/*.cmake
+
+opengl_test
