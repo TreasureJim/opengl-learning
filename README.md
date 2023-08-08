@@ -109,4 +109,194 @@ The `in` keyword specifies the input vertex attributes. This example takes the v
 
 This shader literally just forwards the data taken from the input and outputs it the same (but with the `vec4` format).
 
-# Continue from https://learnopengl.com/Getting-started/Hello-Triangle
+To use the shader in the GPU first we create a shader using `GLuint glCreateShader(GLenum shaderType)` passing in the shader type (in this case `GL_VERTEX_SHADER`) and it returns the id of the shader. 
+
+`void glShaderSource(GLuint shader, GLsizei count, const GLchar **string, const GLint *length)` passes in the shader source code to the GPU.
+
+Parameters
+
+`shader`
+- Specifies the handle of the shader object whose source code is to be replaced.
+`count`
+- Specifies the number of elements in the string and length arrays.
+`string`
+- Specifies an array of pointers to strings containing the source code to be loaded into the shader.
+`length`
+- Specifies an array of string lengths.
+
+For this I wrote the shader in a single raw string so we only have 1 count and the array only has 1 string and the length of `NULL` because we only have 1 string. 
+
+`void glCompileShader(GLuint shader)` compiles the shader.
+
+Parameters
+
+`shader`
+- The ID of the shader.
+
+We can check if the shader compiles correctly using this code: 
+
+```c++
+int compile_success;
+glGetShaderiv(vertex_shader, GL_COMPILE_STATUS, &compile_success);
+if (!compile_success) {
+    char info_log[512];
+    glGetShaderInfoLog(vertex_shader, 512, NULL, info_log);
+    std::cout << "ERROR::SHADER::VERTEX::COMPILATION_FAILED\n"
+          << info_log << "\n";
+}
+```
+
+# Fragment Shader
+
+The fragment shader is responsible for colouring all of the pixels in the shader program. 
+Colours are represented using 4 floats (red, green, blue, alpha) each between 0.0 and 1.0.
+
+Sample fragment shader: 
+```
+#version 330 core
+out vec4 FragColor;
+
+void main()
+{
+    FragColor = vec4(1.0f, 0.5f, 0.2f, 1.0f);
+} 
+```
+
+# Shader Program
+
+To actually create the shader program we first have to link the shaders together to create it. This is where we will get linking errors if the inputs of the shaders do not match. 
+
+`GLuint glCreateProgram()` creates a shader program and returns the id. 
+
+`glAttachShader(GLuint program_id, GLuint shader_id)` attaches the shader to the program. 
+
+`glLinkProgram(GLuint program_id)` links together the shaders of the program together. 
+
+We can check if the linking failed using this code:
+```c++
+glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
+if(!success) {
+    glGetProgramInfoLog(shaderProgram, 512, NULL, infoLog);
+    ...
+}
+```
+
+Then we tell the GPU to use the program using `glUseProgram(GLuint program_id)`.
+Every rendering call after this will call this program to render the results.
+
+After linking the shaders to the program we don't need the source code anymore so we can call `glDeleteShader(GLuint shader_id)` to delete the shader. 
+
+## Vertex Attributes
+
+The vertex shader allows us to specify any input we want in the form of vertex attributes, this means we have to manually specify the location of all the attributes we want to use.
+
+The buffer we created is in the format of 3 vertices made of `vec3` which form a triangle.
+It has the following attributes:
+
+- The position data is stored as 32-bit (4 byte) floating point values.
+- Each position is composed of 3 of those values.
+- There is no space (or other values) between each set of 3 values. The values are tightly packed in the array.
+- The first value in the data is at the beginning of the buffer.
+
+`glVertexAttributePointer` tells OpenGL how to interpret that data. 
+The VBO which the attribute recieves its data from is determined by which VBO is bound before calling `glVertexAttributePointer`.
+- From OpenGL version 3.2 index 0 is invalid
+```c++
+void glVertexAttribPointer(
+    GLuint index,
+  	GLint size,
+  	GLenum type,
+  	GLboolean normalized,
+  	GLsizei stride,
+  	const void * pointer);
+ 
+void glVertexAttribIPointer(
+    GLuint index,
+  	GLint size,
+  	GLenum type,
+  	GLsizei stride,
+  	const void * pointer);
+ 
+void glVertexAttribLPointer(
+    GLuint index,
+  	GLint size,
+  	GLenum type,
+  	GLsizei stride,
+  	const void * pointer);
+```
+
+Parameters
+
+`index`
+- specifies which vertex attribute we want to configure
+- this changes the data in `layout (location = x)` that we mentioned earlier
+- From OpenGL version 3.2 index 0 is invalid
+
+`size`
+- the size of the vertex attribute 
+- in this case we want to configure position which is a `vec3` so it is made of 3 floats so we pass `3`
+
+`type`
+- specifies the type of data
+- with position it is `GL_FLOAT`
+
+`normalized`
+- specifies if we want the data to be normalized 
+- if this is activated and we are passing in integer data then the data is transformed to be between 0.0 (or -1.0 when signed) and 1.0 
+- takes `GL_TRUE` or `GL_FALSE`
+
+`stride`
+- specifies the space between consecutive vertex attributes 
+- for position it is made of 3 floats so we pass in the size of 3 floats (`sizeof(float) * 3`) 
+- passing in `0` will tell OpenGL to try determine the stride itself (only works for tightly packed data) 
+- useful for when the buffer is filled with more than 1 kind of data. eg. position and color
+
+`pointer`
+- this specifies where the start of the data is in the buffer
+- since our data starts at the beginning we pass in `0`
+
+
+We also need to enable the attribute after specifying it using `glEnableVertexAttribArray(GLuint index)`
+
+## Vertex Array Object (VAO)
+
+Instead of making many calls to assign which objects will use which shaders and specify which data buffers to use, we can store all of that information inside a single object and tell the GPU when we want to render it. 
+
+Generate a VAO using:
+```c++
+uint32_t VAO;
+glGenVertexArrays(1, &VAO);
+```
+
+Then bind to the VAO using:
+```c++
+glBindVertexArray(VAO);
+```
+
+# Drawing
+Each frame needs to be drawn to the screen. This can be done in a loop using:
+```c++
+	SDL_Event e;
+	while (true) {
+		SDL_UpdateWindowSurface(window);
+
+		SDL_PollEvent(&e);
+		if (e.type == SDL_QUIT) {
+			SDL_Quit();
+			break;
+		}
+
+		// set default color when clearing screen
+		glClearColor(0.0f, 0.5f, 1.0f, 0.0f);
+		glClear(GL_COLOR_BUFFER_BIT);
+
+		// Tell the GPU to use the program
+		glUseProgram(shader_program);
+		glBindVertexArray(VAO);
+		glDrawArrays(GL_TRIANGLES, 0, 3);
+
+		SDL_GL_SwapWindow(window);
+	}
+```
+
+`glDrawArrays` specifies the type of object to draw, the starting index in the array and how many vertices to draw. 
